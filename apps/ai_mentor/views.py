@@ -13,7 +13,7 @@ from .serializers import (
     AskMentorSerializer,
     MentorFeedbackSerializer,
 )
-from .services import get_mentor_service
+from .services import get_mentor_service, MentorMode
 
 
 class MentorSessionViewSet(viewsets.ModelViewSet):
@@ -72,6 +72,15 @@ class MentorSessionViewSet(viewsets.ModelViewSet):
         session_id = serializer.validated_data.get('session_id')
         course_id = serializer.validated_data.get('course_id')
         lesson_id = serializer.validated_data.get('lesson_id')
+        mode_str = serializer.validated_data.get('mode')
+
+        # Convert mode string to enum if provided
+        mode = None
+        if mode_str:
+            try:
+                mode = MentorMode(mode_str)
+            except ValueError:
+                pass  # Will auto-detect if invalid mode provided
 
         # Get or create session
         if session_id:
@@ -118,7 +127,8 @@ class MentorSessionViewSet(viewsets.ModelViewSet):
             message=message_text,
             course=course,
             lesson=lesson,
-            session_messages=previous_messages
+            session_messages=previous_messages,
+            mode=mode
         )
 
         # Save AI response
@@ -136,6 +146,8 @@ class MentorSessionViewSet(viewsets.ModelViewSet):
             'session_id': session.id,
             'student_message': MentorMessageSerializer(student_message).data,
             'mentor_response': MentorMessageSerializer(mentor_message).data,
+            'mode_used': ai_response.get('mode', 'general'),
+            'next_steps': ai_response.get('next_steps', []),
         }, status=status.HTTP_201_CREATED)
 
 

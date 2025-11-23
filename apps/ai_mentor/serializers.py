@@ -61,6 +61,20 @@ class AskMentorSerializer(serializers.Serializer):
         allow_null=True,
         help_text="Lesson context ID (optional)"
     )
+    mode = serializers.ChoiceField(
+        required=False,
+        allow_null=True,
+        choices=[
+            ('tutor', 'Tutor - Step-by-step teaching'),
+            ('explainer', 'Explainer - Concept explanation'),
+            ('motivator', 'Motivator - Encouragement and support'),
+            ('debugger', 'Debugger - Problem-solving help'),
+            ('exam_prep', 'Exam Prep - Test preparation'),
+            ('socratic', 'Socratic - Learning through questions'),
+            ('general', 'General - Open-ended guidance'),
+        ],
+        help_text="Mentor mode (optional, auto-detected if not provided)"
+    )
 
 
 class MentorFeedbackSerializer(serializers.ModelSerializer):

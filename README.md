@@ -209,10 +209,14 @@ Authorization: Bearer <access_token>
 {
   "message": "Can you explain variables in Python?",
   "course_id": 1,
-  "lesson_id": 5
+  "lesson_id": 5,
+  "mode": "explainer"
 }
 ```
+Available modes: `tutor`, `explainer`, `motivator`, `debugger`, `exam_prep`, `socratic`, `general` (auto-detected if not specified)
+
 - `GET /api/mentor/sessions/my_sessions/` - Get conversation history
+- `GET /api/mentor/sessions/active_sessions/` - Get active conversation sessions
 
 #### Assessments
 - `GET /api/assessments/quizzes/?course_id={id}` - Get course quizzes
@@ -233,40 +237,186 @@ Returns:
 
 ## 🤖 AI Mentor Integration
 
-The AI mentor is powered by Anthropic's Claude and provides:
+The AI mentor is powered by Anthropic's Claude and provides **7 specialized learning modes** with intelligent prompt routing.
 
-### Context-Aware Responses
-The mentor automatically considers:
-- Student profile (year, branch, interests, learning goals)
-- Current course and lesson
-- Learning progress and completion percentage
-- Recent quiz performance
-- Conversation history
+### 🎯 Mentor Modes
 
-### Usage Example
+The AI mentor automatically adapts to different learning scenarios:
+
+#### 1. **Tutor Mode** (`tutor`)
+Step-by-step teaching and guided learning
+- Diagnoses current understanding
+- Builds concepts incrementally
+- Includes comprehension checks
+- Provides practice activities
+- **Auto-triggered by**: "teach me", "how do i", "walk me through"
+
+#### 2. **Explainer Mode** (`explainer`)
+Deep concept explanation and clarification
+- Starts with simple definitions (ELI5)
+- Adds complexity gradually
+- Uses analogies and real-world examples
+- Addresses common misconceptions
+- **Auto-triggered by**: "what is", "explain", "clarify", "why does"
+
+#### 3. **Motivator Mode** (`motivator`)
+Encouragement and emotional support
+- Acknowledges struggles and validates feelings
+- Celebrates progress and achievements
+- Reframes challenges as growth opportunities
+- Sets achievable goals
+- **Auto-triggered by**: "struggling", "frustrated", "difficult", "give up"
+- Also triggered automatically when quiz scores < 50%
+
+#### 4. **Debugger Mode** (`debugger`)
+Problem-solving and code debugging
+- Asks clarifying questions about the issue
+- Guides through systematic debugging
+- Teaches the debugging process
+- Identifies root causes
+- Suggests prevention strategies
+- **Auto-triggered by**: "error", "bug", "not working", "broken", "fix"
+
+#### 5. **Exam Prep Mode** (`exam_prep`)
+Test preparation and review
+- Identifies key topics for review
+- Provides practice questions
+- Suggests study strategies
+- Pinpoints weak areas
+- Offers test-taking tips
+- **Auto-triggered by**: "exam", "test", "quiz", "prepare", "study"
+
+#### 6. **Socratic Mode** (`socratic`)
+Learning through guided questioning
+- Asks thought-provoking questions
+- Encourages critical thinking
+- Challenges assumptions gently
+- Guides discovery rather than telling
+- **Auto-triggered by**: "why", "make me think", "challenge me"
+
+#### 7. **General Mode** (`general`)
+Open-ended guidance and conversation
+- Flexible responses to any question
+- Adapts to context dynamically
+- Default fallback when no specific mode detected
+
+### 🧠 Intelligent Intent Detection
+
+The AI mentor **automatically detects** the best mode based on:
+- **Keywords in the question**: Analyzes language patterns
+- **Student context**: Recent quiz scores, progress, current lesson type
+- **Learning history**: Past interactions and challenges
+
+You can also **explicitly specify** a mode in your request:
 
 ```python
-# Student asks a question
 POST /api/mentor/sessions/ask/
 {
-  "message": "I'm struggling with recursion. Can you help?",
+  "message": "I'm having trouble with this recursive function",
+  "mode": "debugger",  # Force debugger mode
   "lesson_id": 42
 }
-
-# AI Mentor responds with:
-# - Step-by-step explanation
-# - Examples related to the current lesson
-# - Suggestions to review prerequisite material
-# - Practice exercises or next lessons to try
 ```
 
-### Customization
+### 📊 Rich Context-Aware Responses
+
+The mentor automatically considers:
+- **Student Profile**: Year, branch, interests, learning goals, preferred learning style
+- **Current Course**: Title, difficulty level, description
+- **Progress**: Completion percentage, current lesson, time spent
+- **Quiz History**: Recent scores and pass/fail status (last 3 attempts)
+- **Learning Streak**: Current and longest streaks
+- **Conversation History**: Last 10 messages for continuity
+
+### 💡 Usage Examples
+
+#### Example 1: Auto-Detected Explainer Mode
+```bash
+POST /api/mentor/sessions/ask/
+{
+  "message": "What is polymorphism in OOP?",
+  "course_id": 5
+}
+
+# Response includes:
+# {
+#   "mode_used": "explainer",
+#   "mentor_response": {
+#     "content": "Let me explain polymorphism starting simple...",
+#     "suggested_actions": ["review the inheritance lesson", ...]
+#   },
+#   "next_steps": [...]
+# }
+```
+
+#### Example 2: Explicit Socratic Mode
+```bash
+POST /api/mentor/sessions/ask/
+{
+  "message": "How should I approach this algorithm problem?",
+  "mode": "socratic",
+  "lesson_id": 23
+}
+
+# AI will respond with guiding questions instead of direct answers
+```
+
+#### Example 3: Motivator Mode for Struggling Student
+```bash
+POST /api/mentor/sessions/ask/
+{
+  "message": "I'm really struggling with this course",
+  "course_id": 3
+}
+
+# Auto-detects "struggling" → motivator mode
+# Uses quiz history and progress to provide personalized encouragement
+```
+
+### 🔧 Advanced Customization
 
 Edit `apps/ai_mentor/services.py` to customize:
-- System prompt and mentor personality
-- Context building logic
-- Response parsing and action extraction
-- Model parameters (temperature, max tokens)
+
+**Prompt Templates** (`PromptTemplates` class):
+- Modify system prompts for each mode
+- Add new mentor modes
+- Adjust communication style
+
+**Intent Classification** (`IntentClassifier` class):
+- Add new keywords for mode detection
+- Adjust scoring weights
+- Add context-based routing rules
+
+**Context Building** (`MentorService.build_context`):
+- Add new data sources (assignments, peer comparisons, etc.)
+- Customize what context is included for each mode
+
+**Response Parsing** (`MentorService._parse_response`):
+- Extract structured data from responses
+- Identify actionable suggestions
+- Parse next steps recommendations
+
+### 🎨 Structured Output
+
+Every mentor response includes:
+```python
+{
+  "content": "The AI's response text (markdown formatted)",
+  "mode_used": "tutor",  # Which mode was selected
+  "suggested_actions": [
+    "review Module 2, Lesson 3",
+    "practice coding exercises",
+    "take the practice quiz"
+  ],
+  "next_steps": [
+    "Complete the current lesson exercises",
+    "Try implementing a simple example",
+    ...
+  ],
+  "tokens_used": 1250,
+  "model": "claude-3-5-sonnet-20241022"
+}
+```
 
 ## 🎮 Gamification System
 
