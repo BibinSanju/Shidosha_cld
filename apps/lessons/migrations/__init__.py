@@ -1,0 +1,1 @@
+# Migrations for lessons app
